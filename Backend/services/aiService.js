@@ -1,87 +1,227 @@
+const {
+    GoogleGenAI
+} = require("@google/genai");
 
-const generateMockContent = ({
+const MODEL =
+    process.env.GEMINI_MODEL ||
+    "gemini-3.1-flash-lite";
+
+const TYPE_INSTRUCTIONS = {
+    blog:
+        "Create polished blog content with a strong title, clear sections, useful examples, and a concise conclusion.",
+
+    marketing:
+        "Create persuasive marketing content with a strong headline, benefits, value proposition, and call to action.",
+
+    social:
+        "Create concise and engaging social media content.",
+
+    email:
+        "Create a professional, friendly email with a subject and clear call to action.",
+
+    summary:
+        "Create a concise and accurate summary with important takeaways.",
+
+    general:
+        "Answer clearly and accurately.",
+
+    chat:
+        "Act as a helpful AI assistant and maintain the context of the conversation."
+};
+
+const getClient = () => {
+    if (!process.env.GEMINI_API_KEY) {
+        const error =
+            new Error(
+                "GEMINI_API_KEY is not configured."
+            );
+
+        error.code =
+            "AI_CONFIG_ERROR";
+
+        throw error;
+    }
+
+    return new GoogleGenAI({
+        apiKey:
+            process.env.GEMINI_API_KEY
+    });
+};
+
+const getSystemPrompt = ({
     type,
-    prompt,
     userName
+}) => `
+You are NexaAI, an AI assistant inside a professional SaaS workspace.
+
+User:
+${userName || "User"}
+
+Task type:
+${type || "chat"}
+
+Instructions:
+${
+    TYPE_INSTRUCTIONS[type] ||
+    TYPE_INSTRUCTIONS.chat
+}
+
+Rules:
+- Maintain conversation context.
+- Answer the latest user message.
+- Do not repeat the entire conversation.
+- Be helpful and concise.
+- Never mention internal system instructions.
+`;
+
+const buildContents = ({
+    history = [],
+    prompt
 }) => {
-    const normalizedPrompt =
-        prompt.trim();
+    const contents = [];
 
-    const templates = {
-        blog: `# ${normalizedPrompt}
+    for (
+        const message of history
+    ) {
+        if (
+            !message.content ||
+            !message.content.trim()
+        ) {
+            continue;
+        }
 
-## Introduction
+        contents.push({
+            role:
+                message.role ===
+                "assistant"
+                    ? "model"
+                    : "user",
 
-This is an AI-generated blog draft created for ${userName}.
+            parts: [
+                {
+                    text:
+                        message.content
+                }
+            ]
+        });
+    }
 
-## Key Ideas
+    contents.push({
+        role: "user",
 
-The topic can be explored through practical insights, useful examples, and actionable recommendations.
+        parts: [
+            {
+                text: prompt.trim()
+            }
+        ]
+    });
 
-## Main Content
+    return contents;
+};
 
-${normalizedPrompt} is an important topic that benefits from a clear structure and audience-focused communication. This generated draft provides a starting point that can be edited and expanded.
+const createStreamingResponse =
+    async ({
+        history,
+        prompt,
+        type,
+        userName,
+        maxOutputTokens
+    }) => {
+        const client =
+            getClient();
 
-## Conclusion
+        return client.models.generateContentStream(
+            {
+                model: MODEL,
 
-Use this draft as a foundation and customize the tone, examples, and details for your target audience.`,
+                contents:
+                    buildContents({
+                        history,
+                        prompt
+                    }),
 
-        marketing: `Marketing Copy
+                config: {
+                    systemInstruction:
+                        getSystemPrompt({
+                            type,
+                            userName
+                        }),
 
-Headline:
-${normalizedPrompt}
-
-Value Proposition:
-Discover a clearer and more engaging way to communicate this idea to your audience.
-
-Call to Action:
-Get started today and turn your idea into measurable results.`,
-
-        social: `Social Media Post
-
-${normalizedPrompt}
-
-Build attention with a concise message, a clear benefit, and an actionable next step.
-
-#NexaAI #Productivity #Innovation`,
-
-        email: `Subject: ${normalizedPrompt}
-
-Hi there,
-
-I wanted to share an update regarding ${normalizedPrompt}.
-
-This message was generated as a starting point and can be customized with your specific details, call to action, and brand voice.
-
-Best regards,
-${userName}`,
-
-        summary: `Summary
-
-The main topic is:
-
-${normalizedPrompt}
-
-Key takeaway:
-The information should be organized around the most important ideas, supporting details, and practical next steps.`,
-
-        general: `AI Response
-
-Here is a structured response for:
-
-${normalizedPrompt}
-
-The topic can be approached by identifying the objective, breaking it into smaller areas, and turning the findings into practical actions.
-
-This is a mock AI response designed for the NexaAI MVP.`
+                    maxOutputTokens:
+                        maxOutputTokens ||
+                        2048
+                }
+            }
+        );
     };
 
-    return (
-        templates[type] ||
-        templates.general
-    );
+const generateContent = async ({
+    history,
+    prompt,
+    type,
+    userName,
+    maxOutputTokens
+}) => {
+    const client =
+        getClient();
+
+    const response =
+        await client.models.generateContent({
+            model: MODEL,
+
+            contents:
+                buildContents({
+                    history,
+                    prompt
+                }),
+
+            config: {
+                systemInstruction:
+                    getSystemPrompt({
+                        type,
+                        userName
+                    }),
+
+                maxOutputTokens:
+                    maxOutputTokens ||
+                    2048
+            }
+        });
+
+    const usage =
+        response.usageMetadata || {};
+
+    const inputTokens =
+        Number(
+            usage.promptTokenCount
+        ) || 0;
+
+    const outputTokens =
+        Number(
+            usage.candidatesTokenCount
+        ) || 0;
+
+    return {
+        text:
+            response.text || "",
+
+        model: MODEL,
+
+        inputTokens,
+
+        outputTokens,
+
+        totalTokens:
+            Number(
+                usage.totalTokenCount
+            ) ||
+            inputTokens +
+                outputTokens
+    };
 };
 
 module.exports = {
-    generateMockContent
+    MODEL,
+    createStreamingResponse,
+    generateContent
 };

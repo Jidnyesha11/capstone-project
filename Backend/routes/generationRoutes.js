@@ -1,21 +1,30 @@
-
 const express = require("express");
 
 const {
     protect
-} = require("../middleware/authMiddleware");
+} = require(
+    "../middleware/authMiddleware"
+);
 
 const {
     getGenerations,
+    getUsage,
     createGeneration,
-    getGenerationById,
+    streamGeneration,
+    regenerateGeneration,
     deleteGeneration
-} = require("../controllers/generationController");
+} = require(
+    "../controllers/generationController"
+);
 
-const router =
-    express.Router();
+const router = express.Router();
 
 router.use(protect);
+
+router.get(
+    "/usage",
+    getUsage
+);
 
 router.get(
     "/",
@@ -27,9 +36,14 @@ router.post(
     createGeneration
 );
 
-router.get(
-    "/:id",
-    getGenerationById
+router.post(
+    "/stream",
+    streamGeneration
+);
+
+router.post(
+    "/:id/regenerate",
+    regenerateGeneration
 );
 
 router.delete(
@@ -38,4 +52,3 @@ router.delete(
 );
 
 module.exports = router;
-

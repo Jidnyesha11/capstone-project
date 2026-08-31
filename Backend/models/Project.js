@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 
 const projectSchema = new mongoose.Schema(
@@ -24,12 +23,23 @@ const projectSchema = new mongoose.Schema(
             index: true
         },
 
-        color: {
-            type: String,
-            default: "#111111"
+        createdBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null
         },
 
-        isArchived: {
+        color: {
+            type: String,
+            default: "#6d5dfb"
+        },
+
+        icon: {
+            type: String,
+            default: "sparkles"
+        },
+
+        archived: {
             type: Boolean,
             default: false
         }
@@ -38,6 +48,11 @@ const projectSchema = new mongoose.Schema(
         timestamps: true
     }
 );
+
+projectSchema.index({
+    owner: 1,
+    createdAt: -1
+});
 
 module.exports = mongoose.model(
     "Project",

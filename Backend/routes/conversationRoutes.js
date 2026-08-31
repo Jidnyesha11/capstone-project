@@ -7,39 +7,36 @@ const {
 );
 
 const {
-    getProjects,
-    getProjectById,
-    createProject,
-    updateProject,
-    deleteProject
+    listConversations,
+    getConversation,
+    createConversation,
+    deleteConversation
 } = require(
-    "../controllers/projectController"
+    "../controllers/conversationController"
 );
 
 const router = express.Router();
 
 router.use(protect);
 
-router.get("/", getProjects);
-
 router.get(
-    "/:id",
-    getProjectById
+    "/",
+    listConversations
 );
 
 router.post(
     "/",
-    createProject
+    createConversation
 );
 
-router.put(
+router.get(
     "/:id",
-    updateProject
+    getConversation
 );
 
 router.delete(
     "/:id",
-    deleteProject
+    deleteConversation
 );
 
 module.exports = router;

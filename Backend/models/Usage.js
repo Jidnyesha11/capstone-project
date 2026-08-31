@@ -1,5 +1,13 @@
-
 const mongoose = require("mongoose");
+
+const getCurrentPeriodStart = () =>
+    new Date(
+        Date.UTC(
+            new Date().getUTCFullYear(),
+            new Date().getUTCMonth(),
+            1
+        )
+    );
 
 const usageSchema = new mongoose.Schema(
     {
@@ -11,6 +19,12 @@ const usageSchema = new mongoose.Schema(
             index: true
         },
 
+        periodStart: {
+            type: Date,
+            default: getCurrentPeriodStart,
+            index: true
+        },
+
         generations: {
             type: Number,
             default: 0,
@@ -18,6 +32,12 @@ const usageSchema = new mongoose.Schema(
         },
 
         tokensUsed: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+
+        tokensReserved: {
             type: Number,
             default: 0,
             min: 0
@@ -43,4 +63,3 @@ module.exports = mongoose.model(
     "Usage",
     usageSchema
 );
-

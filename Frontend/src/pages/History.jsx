@@ -1,315 +1,359 @@
-
 import {
-  Calendar,
-  Copy,
-  Search,
-  Sparkles,
-  Trash2
-} from "lucide-react";
-
-import {
-  useCallback,
-  useEffect,
-  useState
+    useCallback,
+    useEffect,
+    useMemo,
+    useState
 } from "react";
 
 import {
-  getGenerations,
-  deleteGeneration
+    getGenerations,
+    deleteGeneration,
+    regenerateGeneration
 } from "../services/generationService";
 
-import Loader from "../components/Loader";
-import EmptyState from "../components/EmptyState";
-import Toast from "../components/Toast";
+export default function History() {
+    const [items, setItems] =
+        useState([]);
 
-const History = () => {
-  const [generations, setGenerations] =
-    useState([]);
+    const [search, setSearch] =
+        useState("");
 
-  const [search, setSearch] =
-    useState("");
+    const [loading, setLoading] =
+        useState(true);
 
-  const [type, setType] =
-    useState("");
+    const [error, setError] =
+        useState("");
 
-  const [loading, setLoading] =
-    useState(true);
+    const loadHistory =
+        useCallback(async () => {
+            try {
+                setLoading(true);
 
-  const [error, setError] =
-    useState("");
+                const response =
+                    await getGenerations({
+                        search
+                    });
 
-  const [toast, setToast] =
-    useState("");
-
-  const loadHistory =
-    useCallback(
-      async () => {
-        setLoading(true);
-
-        try {
-          const result =
-            await getGenerations({
-              search,
-              type,
-              limit: 50
-            });
-
-          setGenerations(
-            result.data || []
-          );
-        } catch (requestError) {
-          setError(
-            requestError.response
-              ?.data?.message ||
-              "Unable to load history."
-          );
-        } finally {
-          setLoading(false);
-        }
-      },
-      [search, type]
-    );
-
-  useEffect(() => {
-    const timer =
-      setTimeout(
-        loadHistory,
-        250
-      );
-
-    return () =>
-      clearTimeout(timer);
-  }, [loadHistory]);
-
-  const removeGeneration =
-    async (id) => {
-      try {
-        await deleteGeneration(
-          id
-        );
-
-        setGenerations(
-          (current) =>
-            current.filter(
-              (item) =>
-                item._id !== id
-            )
-        );
-
-        setToast(
-          "Generation deleted."
-        );
-      } catch (requestError) {
-        setError(
-          requestError.response
-            ?.data?.message ||
-            "Unable to delete generation."
-        );
-      }
-    };
-
-  const copyGeneration =
-    async (text) => {
-      await navigator.clipboard.writeText(
-        text
-      );
-
-      setToast(
-        "Copied to clipboard."
-      );
-    };
-
-  if (loading) {
-    return <Loader />;
-  }
-
-  return (
-    <div className="standard-page">
-      <Toast
-        message={toast}
-        onClose={() =>
-          setToast("")
-        }
-      />
-
-      <div className="page-header">
-        <div>
-          <span className="eyebrow">
-            WORKSPACE
-          </span>
-
-          <h1>
-            Generation history
-          </h1>
-
-          <p>
-            Everything you've created,
-            all in one place.
-          </p>
-        </div>
-      </div>
-
-      {error && (
-        <div className="form-error">
-          {error}
-        </div>
-      )}
-
-      <div className="history-toolbar">
-        <div className="search-field">
-          <Search size={17} />
-
-          <input
-            type="search"
-            placeholder="Search generations..."
-            value={search}
-            onChange={(event) =>
-              setSearch(
-                event.target.value
-              )
+                setItems(
+                    response.data || []
+                );
+            } catch (requestError) {
+                setError(
+                    requestError.message ||
+                        "Unable to load history."
+                );
+            } finally {
+                setLoading(false);
             }
-          />
-        </div>
+        }, [search]);
 
-        <select
-          value={type}
-          onChange={(event) =>
-            setType(
-              event.target.value
-            )
-          }
-        >
-          <option value="">
-            All types
-          </option>
-          <option value="general">
-            General
-          </option>
-          <option value="blog">
-            Blog
-          </option>
-          <option value="marketing">
-            Marketing
-          </option>
-          <option value="social">
-            Social
-          </option>
-          <option value="email">
-            Email
-          </option>
-          <option value="summary">
-            Summary
-          </option>
-        </select>
-      </div>
+    useEffect(() => {
+        const timer =
+            setTimeout(() => {
+                loadHistory();
+            }, 250);
 
-      {generations.length ? (
-        <div className="history-list">
-          {generations.map(
-            (generation) => (
-              <article
-                className="history-card"
-                key={
-                  generation._id
-                }
-              >
-                <div className="history-card-icon">
-                  <Sparkles size={18} />
+        return () =>
+            clearTimeout(timer);
+    }, [loadHistory]);
+
+    const copyText =
+        async (text) => {
+            await navigator.clipboard.writeText(
+                text
+            );
+        };
+
+    const exportText =
+        (item) => {
+            const content =
+                `NexaAI Generation\n\n` +
+                `Prompt:\n${item.prompt}\n\n` +
+                `Output:\n${item.result}\n\n` +
+                `Model: ${item.model}\n` +
+                `Created: ${new Date(
+                    item.createdAt
+                ).toLocaleString()}`;
+
+            const blob =
+                new Blob(
+                    [content],
+                    {
+                        type:
+                            "text/plain;charset=utf-8"
+                    }
+                );
+
+            const url =
+                URL.createObjectURL(
+                    blob
+                );
+
+            const link =
+                document.createElement(
+                    "a"
+                );
+
+            link.href = url;
+
+            link.download =
+                "nexaai-generation.txt";
+
+            link.click();
+
+            URL.revokeObjectURL(
+                url
+            );
+        };
+
+    const exportJson =
+        (item) => {
+            const blob =
+                new Blob(
+                    [
+                        JSON.stringify(
+                            item,
+                            null,
+                            2
+                        )
+                    ],
+                    {
+                        type:
+                            "application/json"
+                    }
+                );
+
+            const url =
+                URL.createObjectURL(
+                    blob
+                );
+
+            const link =
+                document.createElement(
+                    "a"
+                );
+
+            link.href = url;
+
+            link.download =
+                "nexaai-generation.json";
+
+            link.click();
+
+            URL.revokeObjectURL(
+                url
+            );
+        };
+
+    const remove =
+        async (id) => {
+            try {
+                await deleteGeneration(
+                    id
+                );
+
+                setItems(
+                    (current) =>
+                        current.filter(
+                            (item) =>
+                                item._id !==
+                                id
+                        )
+                );
+            } catch (requestError) {
+                setError(
+                    requestError.message ||
+                        "Unable to delete."
+                );
+            }
+        };
+
+    const regenerate =
+        async (id) => {
+            try {
+                const response =
+                    await regenerateGeneration(
+                        id
+                    );
+
+                const generated =
+                    response.data;
+
+                setItems(
+                    (current) => [
+                        generated,
+                        ...current
+                    ]
+                );
+            } catch (requestError) {
+                setError(
+                    requestError.message ||
+                        "Unable to regenerate."
+                );
+            }
+        };
+
+    const visibleItems =
+        useMemo(
+            () =>
+                items.filter(
+                    (item) =>
+                        !search ||
+                        item.prompt
+                            ?.toLowerCase()
+                            .includes(
+                                search.toLowerCase()
+                            ) ||
+                        item.result
+                            ?.toLowerCase()
+                            .includes(
+                                search.toLowerCase()
+                            )
+                ),
+            [items, search]
+        );
+
+    return (
+        <main className="history-page">
+            <header className="page-header">
+                <div>
+                    <span className="eyebrow">
+                        AI HISTORY
+                    </span>
+
+                    <h1>
+                        Your generations
+                    </h1>
+
+                    <p>
+                        Search, copy, regenerate,
+                        export, or delete previous
+                        AI outputs.
+                    </p>
                 </div>
 
-                <div className="history-card-body">
-                  <div className="history-card-meta">
-                    <span>
-                      {generation.type}
-                    </span>
-
-                    <span>
-                      {generation.project
-                        ?.name ||
-                        "Project"}
-                    </span>
-
-                    <span>
-                      <Calendar
-                        size={13}
-                      />
-                      {formatDate(
-                        generation.createdAt
-                      )}
-                    </span>
-                  </div>
-
-                  <h3>
-                    {generation.prompt}
-                  </h3>
-
-                  <p>
-                    {generation.result}
-                  </p>
-
-                  <div className="history-actions">
-                    <button
-                      type="button"
-                      className="btn btn-outline btn-small"
-                      onClick={() =>
-                        copyGeneration(
-                          generation.result
+                <input
+                    value={search}
+                    onChange={(event) =>
+                        setSearch(
+                            event.target
+                                .value
                         )
-                      }
-                    >
-                      <Copy
-                        size={14}
-                      />
-                      Copy
-                    </button>
+                    }
+                    placeholder="Search history..."
+                />
+            </header>
 
-                    <button
-                      type="button"
-                      className="btn btn-ghost-danger btn-small"
-                      onClick={() =>
-                        removeGeneration(
-                          generation._id
-                        )
-                      }
-                    >
-                      <Trash2
-                        size={14}
-                      />
-                      Delete
-                    </button>
-                  </div>
+            {error && (
+                <div className="workspace-error">
+                    {error}
                 </div>
-              </article>
-            )
-          )}
-        </div>
-      ) : (
-        <EmptyState
-          title="No generations found"
-          description={
-            search
-              ? "Try a different search term."
-              : "Your generated content will appear here."
-          }
-        />
-      )}
-    </div>
-  );
-};
+            )}
 
-const formatDate = (
-  date
-) => {
-  if (!date) {
-    return "Recently";
-  }
+            {loading ? (
+                <div className="empty-state">
+                    Loading history...
+                </div>
+            ) : visibleItems.length ===
+              0 ? (
+                <div className="empty-state">
+                    No generations found.
+                </div>
+            ) : (
+                <div className="history-list">
+                    {visibleItems.map(
+                        (item) => (
+                            <article
+                                className="history-card"
+                                key={item._id}
+                            >
+                                <div className="history-card-top">
+                                    <div>
+                                        <span>
+                                            {item.type}
+                                        </span>
 
-  return new Intl.DateTimeFormat(
-    "en-US",
-    {
-      dateStyle: "medium"
-    }
-  ).format(new Date(date));
-};
+                                        <h2>
+                                            {
+                                                item.prompt
+                                            }
+                                        </h2>
+                                    </div>
 
-export default History;
+                                    <time>
+                                        {new Date(
+                                            item.createdAt
+                                        ).toLocaleString()}
+                                    </time>
+                                </div>
+
+                                <div className="history-result">
+                                    {
+                                        item.result
+                                    }
+                                </div>
+
+                                <div className="history-actions">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            copyText(
+                                                item.result
+                                            )
+                                        }
+                                    >
+                                        Copy
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            regenerate(
+                                                item._id
+                                            )
+                                        }
+                                    >
+                                        Regenerate
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            exportText(
+                                                item
+                                            )
+                                        }
+                                    >
+                                        Export TXT
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            exportJson(
+                                                item
+                                            )
+                                        }
+                                    >
+                                        Export JSON
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            remove(
+                                                item._id
+                                            )
+                                        }
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </article>
+                        )
+                    )}
+                </div>
+            )}
+        </main>
+    );
+}

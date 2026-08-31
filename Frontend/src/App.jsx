@@ -136,6 +136,15 @@ const App = () => {
             path="*"
             element={<NotFound />}
           />
+
+          <Route
+    path="/chat"
+    element={
+        <ProtectedRoute>
+            <Workspace />
+        </ProtectedRoute>
+    }
+/>
         </Routes>
       </AuthProvider>
     </BrowserRouter>

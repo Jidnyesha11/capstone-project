@@ -1,224 +1,297 @@
-
 const mongoose = require("mongoose");
-
 const Project = require("../models/Project");
-const Usage = require("../models/Usage");
 
-const getProjects = async (
-    req,
-    res
-) => {
-    const projects =
-        await Project.find({
-            owner: req.user._id
-        }).sort({
-            createdAt: -1
+const getProjects = async (req, res) => {
+    try {
+        const projects = await Project.find({
+            $or: [
+                {
+                    owner: req.user._id
+                },
+                {
+                    createdBy: req.user._id
+                }
+            ],
+            archived: false
+        })
+            .sort({
+                createdAt: -1
+            })
+            .lean();
+
+        return res.json({
+            success: true,
+            data: projects
         });
+    } catch (error) {
+        console.error(
+            "GET PROJECTS:",
+            error
+        );
 
-    return res.status(200).json({
-        success: true,
-        count: projects.length,
-        data: projects
-    });
-};
-
-const getProjectById = async (
-    req,
-    res
-) => {
-    if (
-        !mongoose.isValidObjectId(
-            req.params.id
-        )
-    ) {
-        return res.status(400).json({
-            success: false,
-            message: "Invalid project ID."
-        });
-    }
-
-    const project =
-        await Project.findOne({
-            _id: req.params.id,
-            owner: req.user._id
-        });
-
-    if (!project) {
-        return res.status(404).json({
-            success: false,
-            message: "Project not found."
-        });
-    }
-
-    return res.status(200).json({
-        success: true,
-        data: project
-    });
-};
-
-const createProject = async (
-    req,
-    res
-) => {
-    const {
-        name,
-        description,
-        color
-    } = req.body;
-
-    if (!name?.trim()) {
-        return res.status(400).json({
+        return res.status(500).json({
             success: false,
             message:
-                "Project name is required."
+                "Unable to load projects."
         });
     }
-
-    const project =
-        await Project.create({
-            name: name.trim(),
-            description:
-                description?.trim() || "",
-            color:
-                color?.trim() ||
-                "#111111",
-            owner: req.user._id
-        });
-
-    await Usage.findOneAndUpdate(
-        {
-            user: req.user._id
-        },
-        {
-            $inc: {
-                projectsCreated: 1
-            }
-        },
-        {
-            upsert: true
-        }
-    );
-
-    return res.status(201).json({
-        success: true,
-        message:
-            "Project created successfully.",
-        data: project
-    });
 };
 
-const updateProject = async (
-    req,
-    res
-) => {
-    if (
-        !mongoose.isValidObjectId(
-            req.params.id
-        )
-    ) {
-        return res.status(400).json({
-            success: false,
-            message: "Invalid project ID."
-        });
-    }
-
-    const project =
-        await Project.findOne({
-            _id: req.params.id,
-            owner: req.user._id
-        });
-
-    if (!project) {
-        return res.status(404).json({
-            success: false,
-            message: "Project not found."
-        });
-    }
-
-    const {
-        name,
-        description,
-        color,
-        isArchived
-    } = req.body;
-
-    if (name !== undefined) {
-        if (!name.trim()) {
+const getProjectById = async (req, res) => {
+    try {
+        if (
+            !mongoose.Types.ObjectId.isValid(
+                req.params.id
+            )
+        ) {
             return res.status(400).json({
                 success: false,
                 message:
-                    "Project name cannot be empty."
+                    "Invalid project ID."
             });
         }
 
-        project.name =
-            name.trim();
+        const project =
+            await Project.findOne({
+                _id: req.params.id,
+
+                $or: [
+                    {
+                        owner:
+                            req.user._id
+                    },
+                    {
+                        createdBy:
+                            req.user._id
+                    }
+                ]
+            });
+
+        if (!project) {
+            return res.status(404).json({
+                success: false,
+                message:
+                    "Project not found."
+            });
+        }
+
+        return res.json({
+            success: true,
+            data: project
+        });
+    } catch (error) {
+        console.error(
+            "GET PROJECT:",
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+            message:
+                "Unable to load project."
+        });
     }
-
-    if (
-        description !== undefined
-    ) {
-        project.description =
-            description.trim();
-    }
-
-    if (color !== undefined) {
-        project.color =
-            color.trim();
-    }
-
-    if (
-        isArchived !== undefined
-    ) {
-        project.isArchived =
-            Boolean(isArchived);
-    }
-
-    await project.save();
-
-    return res.status(200).json({
-        success: true,
-        message:
-            "Project updated successfully.",
-        data: project
-    });
 };
 
-const deleteProject = async (
-    req,
-    res
-) => {
-    if (
-        !mongoose.isValidObjectId(
-            req.params.id
-        )
-    ) {
-        return res.status(400).json({
+const createProject = async (req, res) => {
+    try {
+        const {
+            name,
+            description = "",
+            color = "#6d5dfb",
+            icon = "sparkles"
+        } = req.body;
+
+        if (
+            !name ||
+            !name.trim()
+        ) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Project name is required."
+            });
+        }
+
+        const project =
+            await Project.create({
+                name: name.trim(),
+
+                description:
+                    description.trim(),
+
+                owner:
+                    req.user._id,
+
+                createdBy:
+                    req.user._id,
+
+                color,
+
+                icon
+            });
+
+        return res.status(201).json({
+            success: true,
+            message:
+                "Project created successfully.",
+            data: project
+        });
+    } catch (error) {
+        console.error(
+            "CREATE PROJECT:",
+            error
+        );
+
+        return res.status(500).json({
             success: false,
-            message: "Invalid project ID."
+            message:
+                "Unable to create project."
         });
     }
+};
 
-    const project =
-        await Project.findOne({
-            _id: req.params.id,
-            owner: req.user._id
+const updateProject = async (req, res) => {
+    try {
+        const project =
+            await Project.findOne({
+                _id: req.params.id,
+
+                $or: [
+                    {
+                        owner:
+                            req.user._id
+                    },
+                    {
+                        createdBy:
+                            req.user._id
+                    }
+                ]
+            });
+
+        if (!project) {
+            return res.status(404).json({
+                success: false,
+                message:
+                    "Project not found."
+            });
+        }
+
+        const {
+            name,
+            description,
+            color,
+            icon,
+            archived
+        } = req.body;
+
+        if (
+            typeof name === "string" &&
+            name.trim()
+        ) {
+            project.name =
+                name.trim();
+        }
+
+        if (
+            typeof description ===
+            "string"
+        ) {
+            project.description =
+                description.trim();
+        }
+
+        if (
+            typeof color === "string"
+        ) {
+            project.color = color;
+        }
+
+        if (
+            typeof icon === "string"
+        ) {
+            project.icon = icon;
+        }
+
+        if (
+            typeof archived ===
+            "boolean"
+        ) {
+            project.archived =
+                archived;
+        }
+
+        await project.save();
+
+        return res.json({
+            success: true,
+            data: project
         });
+    } catch (error) {
+        console.error(
+            "UPDATE PROJECT:",
+            error
+        );
 
-    if (!project) {
-        return res.status(404).json({
+        return res.status(500).json({
             success: false,
-            message: "Project not found."
+            message:
+                "Unable to update project."
         });
     }
+};
 
-    await project.deleteOne();
+const deleteProject = async (req, res) => {
+    try {
+        const project =
+            await Project.findOneAndUpdate(
+                {
+                    _id: req.params.id,
 
-    return res.status(200).json({
-        success: true,
-        message:
-            "Project deleted successfully."
-    });
+                    $or: [
+                        {
+                            owner:
+                                req.user._id
+                        },
+                        {
+                            createdBy:
+                                req.user._id
+                        }
+                    ]
+                },
+                {
+                    archived: true
+                },
+                {
+                    new: true
+                }
+            );
+
+        if (!project) {
+            return res.status(404).json({
+                success: false,
+                message:
+                    "Project not found."
+            });
+        }
+
+        return res.json({
+            success: true,
+            message:
+                "Project archived."
+        });
+    } catch (error) {
+        console.error(
+            "DELETE PROJECT:",
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+            message:
+                "Unable to archive project."
+        });
+    }
 };
 
 module.exports = {
@@ -228,4 +301,3 @@ module.exports = {
     updateProject,
     deleteProject
 };
-

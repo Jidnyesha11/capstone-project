@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 
 const generationSchema = new mongoose.Schema(
@@ -17,6 +16,13 @@ const generationSchema = new mongoose.Schema(
             index: true
         },
 
+        conversation: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Conversation",
+            default: null,
+            index: true
+        },
+
         type: {
             type: String,
             enum: [
@@ -25,7 +31,8 @@ const generationSchema = new mongoose.Schema(
                 "social",
                 "email",
                 "summary",
-                "general"
+                "general",
+                "chat"
             ],
             default: "general"
         },
@@ -44,13 +51,27 @@ const generationSchema = new mongoose.Schema(
 
         model: {
             type: String,
-            default: "nexa-mock-v1"
+            default: "gemini-3.1-flash-lite"
+        },
+
+        responseId: {
+            type: String,
+            default: ""
+        },
+
+        inputTokens: {
+            type: Number,
+            default: 0
+        },
+
+        outputTokens: {
+            type: Number,
+            default: 0
         },
 
         tokensUsed: {
             type: Number,
-            default: 0,
-            min: 0
+            default: 0
         }
     },
     {
