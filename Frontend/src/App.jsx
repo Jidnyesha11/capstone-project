@@ -1,13 +1,12 @@
-
 import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate
+    BrowserRouter,
+    Navigate,
+    Route,
+    Routes
 } from "react-router-dom";
 
 import {
-  AuthProvider
+    AuthProvider
 } from "./context/AuthContext";
 
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -25,131 +24,126 @@ import Settings from "./pages/Settings";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
-const App = () => {
-  return (
+const ProtectedPage = ({
+    children,
+    adminOnly = false
+}) => (
+    <ProtectedRoute adminOnly={adminOnly}>
+        <AppShell>
+            {children}
+        </AppShell>
+    </ProtectedRoute>
+);
+
+const App = () => (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route
-            path="/"
-            element={<Landing />}
-          />
+        <AuthProvider>
+            <Routes>
+                <Route
+                    path="/"
+                    element={<Landing />}
+                />
 
-          <Route
-            path="/login"
-            element={<Login />}
-          />
+                <Route
+                    path="/login"
+                    element={<Login />}
+                />
 
-          <Route
-            path="/register"
-            element={<Register />}
-          />
+                <Route
+                    path="/register"
+                    element={<Register />}
+                />
 
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <AppShell>
-                  <Dashboard />
-                </AppShell>
-              </ProtectedRoute>
-            }
-          />
+                <Route
+                    path="/dashboard"
+                    element={
+                        <ProtectedPage>
+                            <Dashboard />
+                        </ProtectedPage>
+                    }
+                />
 
-          <Route
-            path="/workspace"
-            element={
-              <ProtectedRoute>
-                <AppShell>
-                  <Workspace />
-                </AppShell>
-              </ProtectedRoute>
-            }
-          />
+                <Route
+                    path="/workspace"
+                    element={
+                        <ProtectedPage>
+                            <Workspace />
+                        </ProtectedPage>
+                    }
+                />
 
-          <Route
-            path="/projects"
-            element={
-              <ProtectedRoute>
-                <AppShell>
-                  <Projects />
-                </AppShell>
-              </ProtectedRoute>
-            }
-          />
+                <Route
+                    path="/chat"
+                    element={
+                        <Navigate
+                            to="/workspace"
+                            replace
+                        />
+                    }
+                />
 
-          <Route
-            path="/history"
-            element={
-              <ProtectedRoute>
-                <AppShell>
-                  <History />
-                </AppShell>
-              </ProtectedRoute>
-            }
-          />
+                <Route
+                    path="/projects"
+                    element={
+                        <ProtectedPage>
+                            <Projects />
+                        </ProtectedPage>
+                    }
+                />
 
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <AppShell>
-                  <Profile />
-                </AppShell>
-              </ProtectedRoute>
-            }
-          />
+                <Route
+                    path="/history"
+                    element={
+                        <ProtectedPage>
+                            <History />
+                        </ProtectedPage>
+                    }
+                />
 
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <AppShell>
-                  <Settings />
-                </AppShell>
-              </ProtectedRoute>
-            }
-          />
+                <Route
+                    path="/profile"
+                    element={
+                        <ProtectedPage>
+                            <Profile />
+                        </ProtectedPage>
+                    }
+                />
 
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute adminOnly>
-                <AppShell>
-                  <AdminDashboard />
-                </AppShell>
-              </ProtectedRoute>
-            }
-          />
+                <Route
+                    path="/settings"
+                    element={
+                        <ProtectedPage>
+                            <Settings />
+                        </ProtectedPage>
+                    }
+                />
 
-          <Route
-            path="/app"
-            element={
-              <Navigate
-                to="/dashboard"
-                replace
-              />
-            }
-          />
+                <Route
+                    path="/admin"
+                    element={
+                        <ProtectedPage adminOnly>
+                            <AdminDashboard />
+                        </ProtectedPage>
+                    }
+                />
 
-          <Route
-            path="*"
-            element={<NotFound />}
-          />
+                <Route
+                    path="/app"
+                    element={
+                        <Navigate
+                            to="/dashboard"
+                            replace
+                        />
+                    }
+                />
 
-          <Route
-    path="/chat"
-    element={
-        <ProtectedRoute>
-            <Workspace />
-        </ProtectedRoute>
-    }
-/>
-        </Routes>
-      </AuthProvider>
+                <Route
+                    path="*"
+                    element={<NotFound />}
+                />
+            </Routes>
+        </AuthProvider>
     </BrowserRouter>
-  );
-};
+);
 
 export default App;
-

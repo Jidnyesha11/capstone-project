@@ -707,6 +707,8 @@ const streamGeneration =
                         reservationTokens:
                             reservation.reservationTokens
                     });
+
+                    reservation = null;
                 } catch (
                     releaseError
                 ) {

@@ -24,6 +24,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem("nexa_token");
       localStorage.removeItem("nexa_user");
+      window.dispatchEvent(
+        new Event("nexa-auth-expired")
+      );
     }
 
     return Promise.reject(error);

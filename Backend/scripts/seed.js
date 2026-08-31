@@ -64,6 +64,7 @@ const seed = async () => {
                 description:
                     "Administrative AI workspace.",
                 owner: admin._id,
+                createdBy: admin._id,
                 color: "#111111"
             },
             {
@@ -71,6 +72,7 @@ const seed = async () => {
                 description:
                     "Generate marketing and social content.",
                 owner: user._id,
+                createdBy: user._id,
                 color: "#6D5DFB"
             }
         ]);
@@ -84,7 +86,7 @@ const seed = async () => {
             result:
                 "Launch your productivity potential with a smarter, cleaner workflow.",
             model:
-                "nexa-mock-v1",
+                "gemini-3.1-flash-lite",
             tokensUsed: 42
         });
 

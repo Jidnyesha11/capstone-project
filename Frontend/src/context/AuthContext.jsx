@@ -27,9 +27,19 @@ export const AuthProvider = ({
           "nexa_user"
         );
 
-      return saved
-        ? JSON.parse(saved)
-        : null;
+      if (!saved) {
+        return null;
+      }
+
+      try {
+        return JSON.parse(saved);
+      } catch {
+        localStorage.removeItem(
+          "nexa_user"
+        );
+
+        return null;
+      }
     });
 
   const [token, setToken] =
@@ -54,6 +64,23 @@ export const AuthProvider = ({
     setToken(null);
     setUser(null);
   }, []);
+
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      logout();
+    };
+
+    window.addEventListener(
+      "nexa-auth-expired",
+      handleAuthExpired
+    );
+
+    return () =>
+      window.removeEventListener(
+        "nexa-auth-expired",
+        handleAuthExpired
+      );
+  }, [logout]);
 
   useEffect(() => {
     const restoreSession =

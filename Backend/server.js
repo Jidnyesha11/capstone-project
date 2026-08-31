@@ -3,27 +3,22 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const morgan = require("morgan");
 
+dotenv.config();
+
 const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/authRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const generationRoutes = require("./routes/generationRoutes");
 const conversationRoutes = require("./routes/conversationRoutes");
-
-dotenv.config();
+const profileRoutes = require("./routes/profileRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 const app = express();
+const PORT = Number(process.env.PORT) || 5000;
 
-const PORT = process.env.PORT || 5000;
+app.disable("x-powered-by");
 
-/*
- * Database
- */
-connectDB();
-
-/*
- * Middleware
- */
 app.use(
     cors({
         origin:
@@ -41,7 +36,8 @@ app.use(
 
 app.use(
     express.urlencoded({
-        extended: true
+        extended: true,
+        limit: "2mb"
     })
 );
 
@@ -49,93 +45,61 @@ if (process.env.NODE_ENV !== "test") {
     app.use(morgan("dev"));
 }
 
-/*
- * Health check
- */
-app.get(
-    "/api/health",
-    (req, res) => {
-        res.json({
-            success: true,
-            message:
-                "NexaAI backend is running."
-        });
+app.get("/api/health", (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: "NexaAI backend is running.",
+        timestamp: new Date().toISOString()
+    });
+});
+
+app.use("/api/auth", authRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/generations", generationRoutes);
+app.use("/api/conversations", conversationRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/admin", adminRoutes);
+
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        message: `Route not found: ${req.method} ${req.originalUrl}`
+    });
+});
+
+app.use((error, req, res, next) => {
+    console.error("Unhandled server error:", error);
+
+    if (res.headersSent) {
+        return next(error);
     }
-);
 
-/*
- * API routes
- *
- * IMPORTANT:
- * app must already exist before
- * calling app.use().
- */
-app.use(
-    "/api/auth",
-    authRoutes
-);
+    return res.status(error.status || 500).json({
+        success: false,
+        message:
+            error.message ||
+            "Internal server error."
+    });
+});
 
-app.use(
-    "/api/projects",
-    projectRoutes
-);
+const startServer = async () => {
+    await connectDB();
 
-app.use(
-    "/api/generations",
-    generationRoutes
-);
-
-app.use(
-    "/api/conversations",
-    conversationRoutes
-);
-
-/*
- * 404 handler
- */
-app.use(
-    (req, res) => {
-        res.status(404).json({
-            success: false,
-            message:
-                `Route not found: ${req.method} ${req.originalUrl}`
-        });
-    }
-);
-
-/*
- * Global error handler
- */
-app.use(
-    (error, req, res, next) => {
-        console.error(
-            "GLOBAL ERROR:",
-            error
-        );
-
-        if (res.headersSent) {
-            return next(error);
-        }
-
-        return res.status(
-            error.status || 500
-        ).json({
-            success: false,
-            message:
-                error.message ||
-                "Internal server error."
-        });
-    }
-);
-
-/*
- * Start server
- */
-app.listen(
-    PORT,
-    () => {
+    app.listen(PORT, () => {
         console.log(
             `NexaAI backend running on http://localhost:${PORT}`
         );
-    }
-);
+    });
+};
+
+if (require.main === module) {
+    startServer().catch((error) => {
+        console.error(
+            "Failed to start backend:",
+            error
+        );
+        process.exit(1);
+    });
+}
+
+module.exports = app;
